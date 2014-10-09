@@ -29,6 +29,25 @@ int cS =0;
 
 uint16_t 	onDelay = 5;		// this is the on delay in milliseconds, if there is no on delay, the erase will be too fast to clean up the screen.
 
+struct _customtime {
+  unsigned int uihour;
+  unsigned int uiminute;  
+} ;
+
+_customtime _Sleepy_time;
+_customtime _Wakeup_time;
+
+
+bool bSleepy_activated;
+
+int redPin = 6;
+int greenPin = 5;
+int bluePin = 3;
+
+//uncomment this line if using a Common Anode LED
+#define COMMON_ANODE
+
+
 namespace {
 
 // Set the appropriate digital I/O pin connections. These are the pin
@@ -76,17 +95,24 @@ void printTime() {
   Serial.println(buf);
   #endif
  #ifdef MICROVIEW_DIGITAL
-  uView.setCursor(8,10);
+  uView.setCursor(8,1);
  
   char time_str[50];
   snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d",t.hr, t.min, t.sec);
-  char date_str[50];
-  snprintf(date_str, sizeof(date_str), "%s \n%04d-%02d-%02d",day.c_str(),t.yr, t.mon, t.date);
-  
-  
   uView.print(time_str);
-  uView.setCursor(1,20);
-  uView.print(date_str);
+  
+  //char date_str[50];
+  //snprintf(date_str, sizeof(date_str), "%s \n%04d-%02d-%02d",day.c_str(),t.yr, t.mon, t.date);
+  char Sleep_str[50];
+  char Wakeup_str[50];
+  snprintf(Sleep_str, sizeof(Sleep_str), "BedTime    %02d:%02d\n",_Sleepy_time.uihour, _Sleepy_time.uiminute);
+  
+  snprintf(Wakeup_str, sizeof(Wakeup_str), "Waking up  %02d:%02d\n",_Wakeup_time.uihour, _Wakeup_time.uiminute);
+   
+  uView.setCursor(1,15);
+  uView.print(Sleep_str);
+  uView.setCursor(1,30);
+  uView.print(Wakeup_str);
   uView.display();        // display current page buffer
  #endif
 }
@@ -116,9 +142,33 @@ void SetArduinoTime()
    setTime(t.hr, t.min, t.sec, t.date, t.mon, t.yr); 
 }
 
+
+void setColor(int red, int green, int blue)
+{
+#ifdef COMMON_ANODE
+red = 255 - red;
+green = 255 - green;
+blue = 255 - blue;
+#endif
+analogWrite(redPin, red);
+analogWrite(greenPin, green);
+analogWrite(bluePin, blue);
+}
 void setup() {
   
-  
+_Sleepy_time.uihour=21; 
+_Sleepy_time.uiminute=0;
+
+_Wakeup_time.uihour=7; 
+_Wakeup_time.uiminute=0;
+bSleepy_activated = false;
+
+pinMode(redPin, OUTPUT);
+pinMode(greenPin, OUTPUT);
+pinMode(bluePin, OUTPUT);
+setColor(255, 51, 102);
+
+ 
 #ifdef SERIAL_OUTPUT  
   Serial.begin(9600);
 #endif
@@ -208,12 +258,33 @@ void loop() {
                 printTime();
 	}
   
- #endif   
+ #endif
+if ((bSleepy_activated==false) && ((hour() == _Sleepy_time.uihour) && (minute() == _Sleepy_time.uiminute)))
+{
+	//Allumer la lumière de nuit
+	setColor(102, 153, 255);
+        bSleepy_activated = true;
+        Serial.print("Allumer la lumière de nuit");
+
+}
+
+if ((bSleepy_activated==true) && ((hour() == _Wakeup_time.uihour) && (minute() == _Wakeup_time.uiminute)))
+{
+	//Allumer la lumière de jour
+	setColor(255, 51, 102);
+        bSleepy_activated = false;
+        Serial.print("Allumer la lumière de réveil");
+}
+
+ 
 #ifdef MICROVIEW_DIGITAL
 printTime();
 delay(1000);
 #endif
 
+	
+	
+	
   	
   
   //delay(1000);
