@@ -13,9 +13,11 @@
 //#define SERIAL_OUTPUT
 #define MICROVIEW_DIGITAL
 //#define MICROVIEW_ANALOG
-#define MICROVIEW
 
-#define clocksize 24
+//uncomment this line if using a Common Anode LED
+#define COMMON_ANODE
+
+
 
 int cY = 2014;
 int cM = 10;
@@ -24,11 +26,13 @@ int cH =14;
 int cMin =56;
 int cS =0;
 
+#ifdef MICROVIEW_ANALOG
+#define clocksize 24
 #define SIZE_HOUR 0.4
 #define SIZE_MINUTE 0.7
 #define SIZE_SECOND 0.9
-
 uint16_t 	onDelay = 5;		// this is the on delay in milliseconds, if there is no on delay, the erase will be too fast to clean up the screen.
+#endif
 
 struct _customtime {
   unsigned int uihour;
@@ -44,10 +48,6 @@ bool bSleepy_activated;
 int redPin = 6;
 int greenPin = 5;
 int bluePin = 3;
-
-//uncomment this line if using a Common Anode LED
-#define COMMON_ANODE
-
 
 namespace {
 
