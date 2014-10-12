@@ -13,6 +13,7 @@
 //#define SERIAL_OUTPUT
 #define MICROVIEW_DIGITAL
 //#define MICROVIEW_ANALOG
+#define MICROVIEW
 
 #define clocksize 24
 
@@ -81,7 +82,7 @@ void printTime() {
   Time t = rtc.time();
 
   // Name the day of the week.
-  const String day = dayAsString(t.day);
+  //const String day = dayAsString(t.day);
 
   #ifdef SERIAL_OUTPUT
   // Format the time and date and insert into the temporary buffer.
@@ -94,6 +95,7 @@ void printTime() {
   // Print the formatted string to serial so we can see the time.
   Serial.println(buf);
   #endif
+
  #ifdef MICROVIEW_DIGITAL
   uView.setCursor(8,1);
  
@@ -105,6 +107,7 @@ void printTime() {
   //snprintf(date_str, sizeof(date_str), "%s \n%04d-%02d-%02d",day.c_str(),t.yr, t.mon, t.date);
   
  #endif
+
 }
 
 }  // namespace
@@ -159,29 +162,22 @@ void setup()
   pinMode(redPin, OUTPUT);
   pinMode(greenPin, OUTPUT);
   pinMode(bluePin, OUTPUT);
-  
-  
-  
-  
-  
-  
-  
-  
+
    
 #ifdef SERIAL_OUTPUT  
   Serial.begin(9600);
 #endif
-  uView.begin();
-  uView.setColor(WHITE);		// begin of MicroView
-  
-  
-  uView.clear(ALL);	// erase hardware memory inside the OLED controller
   
 #ifdef MICROVIEW_DIGITAL
+  uView.begin();
+  uView.clear(ALL);	// erase hardware memory inside the OLED controller
   uView.clear(PAGE);	// erase the memory buffer, when next uView.display() is called, the OLED will be cleared.	
 #endif
   
 #ifdef MICROVIEW_ANALOG
+  uView.begin();
+  
+  uView.clear(ALL);	// erase hardware memory inside the OLED controller
   uView.display();	// display the content in the buffer memory, by default it is the MicroView logo
   
   delay(700);
@@ -213,7 +209,8 @@ void setup()
     // Set the time and date on the chip.
     rtc.time(t);
 #endif
-char Sleep_str[50];
+#ifdef MICROVIEW_DIGITAL 
+  char Sleep_str[50];
   char Wakeup_str[50];
   snprintf(Sleep_str, sizeof(Sleep_str), "BedTime    %02d:%02d\n",_Sleepy_time.uihour, _Sleepy_time.uiminute);
   
@@ -224,8 +221,8 @@ char Sleep_str[50];
   uView.setCursor(1,30);
   uView.print(Wakeup_str);
   uView.display();        // display current page buffer
-//setColor(255, 20,20);
-  
+
+#endif  
 if ((hour() >= _Sleepy_time.uihour) || (hour() <= _Wakeup_time.uihour))
 {
 	//Allumer la lumière de nuit
@@ -234,8 +231,6 @@ if ((hour() >= _Sleepy_time.uihour) || (hour() <= _Wakeup_time.uihour))
         #ifdef SERIAL_OUTPUT
         Serial.print("Allumer la lumière de nuit");
         #endif
-        
-
 }
 else
 {
@@ -313,7 +308,7 @@ if ((bSleepy_activated==true) && ((hour() == _Wakeup_time.uihour) && (minute() >
 }
 
  
-#ifdef MICROVIEW_DIGITAL
+#ifndef MICROVIEW_ANALOG
 printTime();
 delay(1000);
 #endif
@@ -323,5 +318,5 @@ delay(1000);
 	
   	
   
-  //delay(1000);
+  
 }
