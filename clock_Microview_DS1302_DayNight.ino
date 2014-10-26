@@ -16,7 +16,7 @@
 
 //Case RGB LED
 //uncomment this line if using a Common Anode LED
-#define COMMON_ANODE
+//#define COMMON_ANODE
 #define RGB_LED
 
 
@@ -45,6 +45,8 @@ _customtime _Wakeup_time_WE;
 bool bIsItWeekEnd;
 bool bSleepy_activated;
 bool bTurnOnLED;
+bool bDSTOn;
+
 #ifdef RGB_LED
 int redPin = 6;
 int greenPin = 5;
@@ -90,11 +92,91 @@ namespace {
     }
     return "(unknown day)";
   }
+void SetRTCTime(Time t)
+{
+	// Initialize a new chip by turning off write protection and clearing the
+  // clock halt flag. These methods needn't always be called. See the DS1302
+  // datasheet for details.
+  rtc.writeProtect(false);
+  rtc.halt(false);
+
+  // Make a new time object to set the date and time.
+  // Sunday, September 22, 2013 at 01:38:50.
+  //Time t(2014, 10, 19, 15, 57, 00, Time::kSunday);
+
+  // Set the time and date on the chip.
+  rtc.time(t);
+
+
+
+}
+  
+  bool IsDst(Time t)
+{
+        if (t.mon < 3 || t.mon > 10)  return false; 
+        if (t.mon > 3 && t.mon < 10)  return true; 
+
+        
+
+        if ((t.mon == 3)&&(t.day == Time::kSunday) &&(t.date > 25) &&(t.hr >= 3))
+		{
+          
+		  return true;
+         }else
+		   {
+          return false;
+		  }
+        if ((t.mon == 10)&&(t.day == Time::kSunday)&&(t.date > 24) &&(t.hr >= 3))
+        {  
+		#ifdef SERIAL_OUTPUT
+		 Serial.println("DST OFF\n");
+		#endif
+		return false;
+        }else
+		{
+          #ifdef SERIAL_OUTPUT
+		 Serial.println("DST ON\n");
+		#endif
+		  return true;
+}
+        //return false; // this line never gonna happend
+}
 
 
   void printTime() {
     // Get the current time and date from the chip.
     Time t = rtc.time();
+	
+	//check DST for Central european time if we have to add or remove a hour 
+	//if last sunday of March add a hour at 3 and if you are not already in DST summer time
+	if (((t.mon==3)&&(bDSTOn == false ))||((bDSTOn == true )&&(t.mon)==10))
+	{
+			
+		if ((bDSTOn == true )&& ((t.mon)== 10)&&(t.day == Time::kSunday) &&(t.date > 24) &&(t.hr == 3)&&(t.min == 0)&&(t.sec == 0))
+		{
+			bDSTOn = false;
+			//remove a hour
+			t.hr -=1; 
+			SetRTCTime(t);
+			t = rtc.time();
+			
+		}
+		
+		if ((bDSTOn == false )&& ((t.mon)== 3)&&(t.day == Time::kSunday) &&(t.date > 25) &&(t.hr == 3)&&(t.min == 0)&&(t.sec == 0))
+		{
+			bDSTOn = true;
+			//remove a hour
+			t.hr +=1; 
+			SetRTCTime(t);
+			t = rtc.time();
+			
+		}
+		
+		
+	}
+	
+	//if last sunday of October remove a hour at 3 and if you are not already in DST winter time
+	//
 
     // Name the day of the week.
     const String day = dayAsString(t.day);
@@ -109,13 +191,14 @@ namespace {
 
     // Print the formatted string to serial so we can see the time.
     Serial.println(buf);
+    
 #endif
 
 #ifdef MICROVIEW_DIGITAL
       uView.setCursor(15,1);
 
     char time_str[50];
-    snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d",t.hr, t.min, t.sec);
+    snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d DST:%d",t.hr, t.min, t.sec,bDSTOn);
     uView.print(time_str);
     uView.display();        // display current page buffer
     //char date_str[50];
@@ -126,6 +209,8 @@ namespace {
   }
 
 }  // namespace
+
+
 
 bool SynchroTime()
 {
@@ -150,6 +235,11 @@ void SetArduinoTime()
 {
   Time t = rtc.time();
   setTime(t.hr, t.min, t.sec, t.date, t.mon, t.yr);
+  bDSTOn = IsDst(t);
+}
+void dimColor()
+{
+
 }
 
 
@@ -255,9 +345,9 @@ void DisplayWakeup()
   snprintf(Sleep_str, sizeof(Sleep_str), "BedTime   %02d:%02d\n",_Sleepy_time.uihour, _Sleepy_time.uiminute);
   snprintf(Wakeup_str, sizeof(Wakeup_str), "Waking up %02d:%02d\n",_Wakeup_time.uihour, _Wakeup_time.uiminute);
 
-  uView.setCursor(1,15);
+  uView.setCursor(1,17);
   uView.print(Sleep_str);
-  uView.setCursor(1,30);
+  uView.setCursor(1,33);
   uView.print(Wakeup_str);
   uView.display();        // display current page buffer
 
@@ -304,6 +394,7 @@ void IsSleepyOrWakeUpTime()
 
 
 }
+
 void setup()
 {
   _Sleepy_time_W.uihour=21;
@@ -316,31 +407,27 @@ void setup()
   _Wakeup_time_WE.uihour=8;
   _Wakeup_time_WE.uiminute=0;
 
-#ifdef SERIAL_OUTPUT
+
   
-#endif
+#ifdef SERIAL_OUTPUT
 Serial.begin(115200);
-  while (!Serial) ;
+  while (!Serial) ;  
+#endif
+
 
   bSleepy_activated = false;
   bTurnOnLED = true;
 
 #ifdef SET_DATE_TIME_JUST_ONCE
-  // Initialize a new chip by turning off write protection and clearing the
-  // clock halt flag. These methods needn't always be called. See the DS1302
-  // datasheet for details.
-  rtc.writeProtect(false);
-  rtc.halt(false);
-
-  // Make a new time object to set the date and time.
+ // Make a new time object to set the date and time.
   // Sunday, September 22, 2013 at 01:38:50.
-  Time t(2014, 10, 19, 15, 57, 00, Time::kSunday);
-
-  // Set the time and date on the chip.
-  rtc.time(t);
+  Time t(2014, 10, 26, 9, 38, 00, Time::kSunday);
+  SetRTCTime(t);  
 #endif
+  bDSTOn= true;
   SetArduinoTime();
-
+  
+  
   pinMode(redPin, OUTPUT);
   pinMode(greenPin, OUTPUT);
   pinMode(bluePin, OUTPUT);
